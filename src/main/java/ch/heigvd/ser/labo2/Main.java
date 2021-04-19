@@ -1,5 +1,5 @@
 /**
- * Noms des étudiants : // TODO : A compléter...
+ * Noms des étudiants : // Axel Vallon, Matthieu Godi
  */
 
 package ch.heigvd.ser.labo2;
@@ -11,6 +11,7 @@ import java.io.*;
 import java.util.List;
 
 import org.jdom2.JDOMException;
+import org.jdom2.input.SAXBuilder;
 
 // TODO : Vous avez le droit d'ajouter des instructions import si cela est nécessaire
 
@@ -20,9 +21,8 @@ class Main {
 
         Document document = readDocument(new File("tournois_fse.xml"));
 
-        // TODO : Compléter en une ligne l'initialisation de cette liste d'éléments (c'est la seule ligne que vous pouvez modifier ici.
         Element root = document.getRootElement();
-        List<Element> tournois = null /* A compléter en utilisant la variable root */;
+        List<Element> tournois = root.getChild("tournois").getChildren();
 
         writePGNfiles(tournois);
 
@@ -33,10 +33,7 @@ class Main {
      * @param file
      */
     private static Document readDocument(File file) throws JDOMException, IOException {
-
-        // TODO : A compléter... (ne doit pas faire plus d'une ligne). Vous êtes autorisés à créer des méthodes utilitaires, mais pas des classes
-        return null;
-
+        return new SAXBuilder().build(file); //build en 1 ligne
     }
 
     /**
@@ -53,9 +50,42 @@ class Main {
      *                 (!!! Un fichier par partie, donc cette méthode doit écrire plusieurs fichiers PGN !!!)
      */
     private static void writePGNfiles(List<Element> tournois) {
+        for(Element tournoi : tournois){
 
-        // TODO : A compléter... selon ce qui est indiqué dans la donnée... vous devez comprendre la DTD fournie avant de faire ceci !
+            String nomTournoi = tournoi.getAttributeValue("nom").replaceAll("[ ',.]", "_");
+            List parties = tournoi.getChild("parties").getChildren();
+            for (int noPartie = 0; noPartie < parties.size(); noPartie++){
+                File fichierPGN = new File(nomTournoi + "_" + noPartie + ".pgn");
+                PrintWriter os = null;
+                try {
+                    os = new PrintWriter(new FileWriter(fichierPGN));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return;
+                }
 
+                List coups = ((Element) parties.get(noPartie)).getChild("coups").getChildren();
+                for (int noCoup = 0; noCoup < coups.size(); noCoup++){
+                    String ligneToWrite = String.valueOf(noCoup/2) + " ";
+
+                    String coup_special = ((Element) coups.get(noCoup)).getAttributeValue("coup_special");
+                    Element typeCoup = ((Element) coups.get(noCoup)).getChild("deplacement");
+                    if (typeCoup != null) { // on a un coup normal
+                        String piece = typeCoup.getAttributeValue("piece");
+                        String case_depart = typeCoup.getAttributeValue("case_depart");
+                        String case_arrivee = typeCoup.getAttributeValue("case_arrivee");
+                        String elimination = typeCoup.getAttributeValue("elimination");
+                        String promotion = typeCoup.getAttributeValue("promotion");
+                        if (piece != null && case_arrivee != null)
+                            System.out.println(piece + " vers " + case_arrivee);
+                    }
+                    else { //on a un roque
+                        typeCoup = ((Element) coups.get(noCoup)).getChild("roque");
+                        String typeRoque = typeCoup.getAttributeValue("type");
+                    }
+                }
+            }
+        }
     }
 
 }
