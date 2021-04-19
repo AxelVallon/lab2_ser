@@ -4,6 +4,7 @@
 
 package ch.heigvd.ser.labo2;
 
+import ch.heigvd.ser.labo2.coups.*;
 import org.jdom2.Document;
 import org.jdom2.Element;
 
@@ -49,7 +50,7 @@ class Main {
      *
      *                 (!!! Un fichier par partie, donc cette méthode doit écrire plusieurs fichiers PGN !!!)
      */
-    private static void writePGNfiles(List<Element> tournois) {
+    private static void writePGNfiles(List<Element> tournois) throws Exception {
         for(Element tournoi : tournois){
 
             String nomTournoi = tournoi.getAttributeValue("nom").replaceAll("[ ',.]", "_");
@@ -57,34 +58,89 @@ class Main {
             for (int noPartie = 0; noPartie < parties.size(); noPartie++){
                 File fichierPGN = new File(nomTournoi + "_" + noPartie + ".pgn");
                 PrintWriter os = null;
-                try {
-                    os = new PrintWriter(new FileWriter(fichierPGN));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return;
-                }
+                os = new PrintWriter(new FileWriter(fichierPGN));
 
                 List coups = ((Element) parties.get(noPartie)).getChild("coups").getChildren();
+                String notationPGN;
                 for (int noCoup = 0; noCoup < coups.size(); noCoup++){
-                    String ligneToWrite = String.valueOf(noCoup/2) + " ";
 
-                    String coup_special = ((Element) coups.get(noCoup)).getAttributeValue("coup_special");
+                    CoupSpecial coup_special = convertCoupSpecial
+                            (((Element) coups.get(noCoup)).getAttributeValue("coup_special"));
+
                     Element typeCoup = ((Element) coups.get(noCoup)).getChild("deplacement");
                     if (typeCoup != null) { // on a un coup normal
-                        String piece = typeCoup.getAttributeValue("piece");
-                        String case_depart = typeCoup.getAttributeValue("case_depart");
-                        String case_arrivee = typeCoup.getAttributeValue("case_arrivee");
-                        String elimination = typeCoup.getAttributeValue("elimination");
-                        String promotion = typeCoup.getAttributeValue("promotion");
-                        if (piece != null && case_arrivee != null)
-                            System.out.println(piece + " vers " + case_arrivee);
+                        //on convertit les déplacements dans les types appropriés
+                        TypePiece piece = convertTypePiece(typeCoup.getAttributeValue("piece"));
+                        Case case_depart = convertCase(typeCoup.getAttributeValue("case_depart"));
+                        Case case_arrivee = convertCase(typeCoup.getAttributeValue("case_arrivee"));
+                        TypePiece elimination = convertTypePiece(typeCoup.getAttributeValue("elimination"));
+                        TypePiece promotion = convertTypePiece(typeCoup.getAttributeValue("promotion"));
+                        Deplacement deplacement = new Deplacement(piece,elimination,promotion,coup_special,
+                                case_depart,case_arrivee);
+                        notationPGN = deplacement.notationPGN();
+
                     }
                     else { //on a un roque
                         typeCoup = ((Element) coups.get(noCoup)).getChild("roque");
-                        String typeRoque = typeCoup.getAttributeValue("type");
+                        TypeRoque typeRoque = convertRoque(typeCoup.getAttributeValue("type"));
+                        Roque roque = new Roque(coup_special,typeRoque);
+                        notationPGN = roque.notationPGN();
+                    }
+
+                    if (noCoup % 2 == 0){
+                        os.print(noCoup/2 + " " + notationPGN);
+                    }
+                    else{
+                        os.println(" " + notationPGN);
                     }
                 }
+                os.close();
             }
+        }
+
+    }
+    private static TypePiece convertTypePiece(String piece){
+        if (piece == null)
+            return null;
+        switch (piece){
+            case "Tour": return TypePiece.Tour;
+            case "Cavalier": return TypePiece.Cavalier;
+            case "Fou": return TypePiece.Fou;
+            case "Dame": return TypePiece.Dame;
+            case "Roi": return TypePiece.Roi;
+            case "Pion": return TypePiece.Pion;
+            default : return null;
+        }
+    }
+
+    private static Case convertCase(String case_str){
+        if (case_str == null){
+            return null;
+        }
+        return new Case(case_str.charAt(0),case_str.charAt(1)-'0');
+    }
+
+    private static CoupSpecial convertCoupSpecial(String coup_special){
+        if (coup_special == null)
+            return null;
+        switch (coup_special){
+            case "mat": return CoupSpecial.MAT;
+            case "echec": return CoupSpecial.ECHEC;
+            case "nulle": return CoupSpecial.NULLE;
+            default : return null;
+        }
+    }
+
+    private static TypeRoque convertRoque(String roque) {
+        if (roque == null)
+            return null;
+        switch (roque) {
+            case "petit_roque":
+                return TypeRoque.PETIT;
+            case "grand_roque":
+                return TypeRoque.GRAND;
+            default:
+                return null;
         }
     }
 
